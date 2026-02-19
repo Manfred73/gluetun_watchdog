@@ -6,7 +6,8 @@ The **Gluetun Watchdog Script** monitors your Gluetun VPN container and ensures 
 
 - Tested on QNAP TVS-h1288X, firmware QuTS hero h5.2.8.3359.  
 - Uses a ping check to verify internet connectivity through the VPN.  
-- Configurable dependent containers and paths.  
+- Configurable dependent containers and paths. 
+- Includes log rotation to prevent unlimited log growth and optional cleanup of old log files.
 
 ---
 
@@ -39,7 +40,7 @@ The **Gluetun Watchdog Script** monitors your Gluetun VPN container and ensures 
 ## Why Absolute Paths and `add_to_path` are Necessary
 
 - All paths to scripts, log files, and container folders should be **absolute paths** because cron runs scripts in a minimal environment with no guarantee of a working directory.  
-- The `add_to_path` function ensures that commands like `docker`, `cat`, `grep`, `ping`, `date`, and `sleep` can be found by cron. Without it, the script may fail because cron cannot locate these binaries in its limited PATH.
+- The `add_to_path` function ensures that commands like `docker`, `ping`, `cat`, `grep`, `sleep`, `date`, `stat`, `mv`, `touch`, `tail`, `xargs` and `rm` can be found by cron. Without it, the script may fail because cron cannot locate these binaries in its limited PATH.
 
 Example in the watchdog script:
 
@@ -52,7 +53,7 @@ add_to_path() {
   fi
 }
 
-for cmd in docker ping cat grep sleep date; do
+for cmd in docker ping cat grep sleep date stat mv touch tail xargs rm; do
   add_to_path "$cmd"
 done
 ```
@@ -137,6 +138,10 @@ PING_COUNT=2
 
 MAX_FAILURES=10
 SLEEP_AFTER_START=30
+
+ENABLE_LOG_ROTATION=false    # Set to true to enable log rotation
+MAX_LOG_FILES=5              # Keep last 5 rotated logs
+CLEANUP_OLD_LOGS=false       # Set to true to remove old rotated logs
 ```
 
 ## Cron Setup on QNAP
@@ -161,6 +166,12 @@ _Reference:_ [QNAP Wiki: Add items to crontab](https://wiki.qnap.com/wiki/Add_it
 ## Logging
 
 All actions and outputs are logged to the file specified in LOGFILE.
+
+Log rotation:
+- Configurable via `MAX_LOG_SIZE` and `MAX_LOG_FILES` in the `gluetun_watchdog.env` file; old logs are timestamped.
+- Optional cleanup of older log files when `CLEANUP_OLD_LOGS` is set to `true` in the `gluetun_watchdog.env` file (default is false).
+
+Example:
 
 ```bash
 2026-02-10 20:00:00 - Gluetun VPN check failed (3/10). Current fail count: 3, Max allowed failures: 10.

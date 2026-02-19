@@ -5,7 +5,24 @@
 # -----------------------------
 
 # Load variables
-source /share/homes/<user>/scripts/gluetun_watchdog/gluetun_watchdog.env
+source /share/homes/manfred/scripts/gluetun_watchdog/gluetun_watchdog.env
+
+# -----------------------------
+# Log rotation
+# -----------------------------
+rotate_log() {
+  if [ -f "$LOGFILE" ] && [ $(stat -c%s "$LOGFILE") -ge "$MAX_LOG_SIZE" ]; then
+    mv "$LOGFILE" "${LOGFILE}_$(date '+%Y%m%d_%H%M%S')"
+    touch "$LOGFILE"
+  fi
+
+  if [ "${CLEANUP_OLD_LOGS,,}" = "true" ]; then
+    # Keep only the most recent $MAX_LOG_FILES rotated logs
+    ls -1t "${LOGFILE}"_* 2>/dev/null | tail -n +"$((MAX_LOG_FILES+1))" | xargs -r rm
+  fi
+}
+
+rotate_log
 
 # -----------------------------
 # Hardened PATH function
@@ -19,7 +36,7 @@ add_to_path() {
 }
 
 # Add all required commands
-for cmd in docker ping cat grep sleep date; do
+for cmd in docker ping cat grep sleep date stat mv touch tail xargs rm; do
   add_to_path "$cmd"
 done
 
